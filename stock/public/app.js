@@ -6,12 +6,12 @@ const cryptoSymbols = [
 ];
 
 const stockSymbols = [
-  { code: "NASDAQ:AAPL", label: "AAPL", quoteSymbol: "AAPL", market: "stock" },
-  { code: "NASDAQ:MSFT", label: "MSFT", quoteSymbol: "MSFT", market: "stock" },
-  { code: "NASDAQ:NVDA", label: "NVDA", quoteSymbol: "NVDA", market: "stock" },
-  { code: "NASDAQ:TSLA", label: "TSLA", quoteSymbol: "TSLA", market: "stock" },
-  { code: "NASDAQ:AMZN", label: "AMZN", quoteSymbol: "AMZN", market: "stock" },
-  { code: "NASDAQ:META", label: "META", quoteSymbol: "META", market: "stock" },
+  { code: "NASDAQ:AAPL", label: "AAPL", quoteSymbol: "AAPL", market: "stock", name: "Apple" },
+  { code: "NASDAQ:MSFT", label: "MSFT", quoteSymbol: "MSFT", market: "stock", name: "Microsoft" },
+  { code: "NASDAQ:NVDA", label: "NVDA", quoteSymbol: "NVDA", market: "stock", name: "NVIDIA" },
+  { code: "NASDAQ:TSLA", label: "TSLA", quoteSymbol: "TSLA", market: "stock", name: "Tesla" },
+  { code: "NASDAQ:AMZN", label: "AMZN", quoteSymbol: "AMZN", market: "stock", name: "Amazon" },
+  { code: "NASDAQ:META", label: "META", quoteSymbol: "META", market: "stock", name: "Meta" },
 ];
 
 const allSymbols = [...cryptoSymbols, ...stockSymbols];
@@ -25,12 +25,25 @@ const alertDirection = document.getElementById("alertDirection");
 const alertPrice = document.getElementById("alertPrice");
 const alertList = document.getElementById("alertList");
 const priceList = document.getElementById("priceList");
+const stockFeedStatus = document.getElementById("stockFeedStatus");
+
+const stockSymbolEl = document.getElementById("stockSymbol");
+const stockNameEl = document.getElementById("stockName");
+const stockPriceEl = document.getElementById("stockPrice");
+const stockMetaEl = document.getElementById("stockMeta");
+const stockRangeEl = document.getElementById("stockRange");
+const stockBarsEl = document.getElementById("stockBars");
+const stockGridPath = document.getElementById("stockGrid");
+const stockCandlesLayer = document.getElementById("stockCandles");
+const stockLinePath = document.getElementById("stockLine");
 
 const latestPrices = new Map();
+const stockSnapshots = new Map();
 const activeAlerts = [];
 let stockTimerId = null;
 let cryptoSocket = null;
 let stockPollMs = 5000;
+let activeStockSymbol = stockSymbols[0].quoteSymbol;
 
 function formatMoney(value) {
   if (!Number.isFinite(Number(value))) {
@@ -45,6 +58,16 @@ function formatMoney(value) {
     currency: "USD",
     maximumFractionDigits: digits,
   }).format(amount);
+}
+
+function formatChange(change, changePercent) {
+  if (!Number.isFinite(Number(change))) {
+    return "변동 데이터 없음";
+  }
+
+  const sign = Number(change) > 0 ? "+" : "";
+  const pct = Number.isFinite(Number(changePercent)) ? ` (${sign}${Number(changePercent).toFixed(2)}%)` : "";
+  return `${sign}${Number(change).toFixed(2)}${pct}`;
 }
 
 function updatePermissionPill() {
@@ -173,6 +196,96 @@ function updatePrice(symbol, price) {
   renderPrices();
 }
 
+function drawStockChart(symbol) {
+  const snapshot = stockSnapshots.get(symbol);
+  const fallbackName = stockSymbols.find((item) => item.quoteSymbol === symbol)?.name || symbol;
+
+  if (!snapshot) {
+    stockSymbolEl.textContent = symbol;
+    stockNameEl.textContent = fallbackName;
+    stockPriceEl.textContent = "--";
+    stockMetaEl.textContent = "데이터 수집 중";
+    stockRangeEl.textContent = "";
+    stockBarsEl.textContent = "";
+    stockGridPath.setAttribute("d", "");
+    stockCandlesLayer.innerHTML = "";
+    stockLinePath.setAttribute("d", "");
+    return;
+  }
+
+  const bars = Array.isArray(snapshot.bars) ? snapshot.bars.filter((bar) =>
+    Number.isFinite(bar.open) &&
+    Number.isFinite(bar.high) &&
+    Number.isFinite(bar.low) &&
+    Number.isFinite(bar.close)
+  ) : [];
+
+  stockSymbolEl.textContent = snapshot.symbol;
+  stockNameEl.textContent = snapshot.name || fallbackName;
+  stockPriceEl.textContent = formatMoney(snapshot.price);
+  stockMetaEl.textContent = `${snapshot.marketState} · ${formatChange(snapshot.change, snapshot.changePercent)}`;
+
+  if (!bars.length) {
+    stockRangeEl.textContent = "최근 분봉 데이터 없음";
+    stockBarsEl.textContent = "";
+    stockGridPath.setAttribute("d", "");
+    stockCandlesLayer.innerHTML = "";
+    stockLinePath.setAttribute("d", "");
+    return;
+  }
+
+  const width = 900;
+  const height = 360;
+  const top = 16;
+  const bottom = 320;
+  const chartHeight = bottom - top;
+  const max = Math.max(...bars.map((bar) => bar.high));
+  const min = Math.min(...bars.map((bar) => bar.low));
+  const scale = (value) => {
+    const range = max - min || Math.max(Math.abs(max), 1);
+    return top + (1 - (value - min) / range) * chartHeight;
+  };
+
+  stockGridPath.setAttribute("d", `M 0 80 L ${width} 80 M 0 160 L ${width} 160 M 0 240 L ${width} 240`);
+  stockCandlesLayer.innerHTML = "";
+
+  const step = width / bars.length;
+  const candleWidth = Math.max(10, step - 8);
+  const linePoints = [];
+
+  bars.forEach((bar, index) => {
+    const x = index * step + step / 2;
+    const openY = scale(bar.open);
+    const closeY = scale(bar.close);
+    const highY = scale(bar.high);
+    const lowY = scale(bar.low);
+    const rising = bar.close >= bar.open;
+
+    const wick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    wick.setAttribute("x1", x.toFixed(2));
+    wick.setAttribute("x2", x.toFixed(2));
+    wick.setAttribute("y1", highY.toFixed(2));
+    wick.setAttribute("y2", lowY.toFixed(2));
+    wick.setAttribute("class", `candle-wick ${rising ? "up" : "down"}`);
+
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    body.setAttribute("x", (x - candleWidth / 2).toFixed(2));
+    body.setAttribute("width", candleWidth.toFixed(2));
+    body.setAttribute("y", Math.min(openY, closeY).toFixed(2));
+    body.setAttribute("height", Math.max(Math.abs(closeY - openY), 2).toFixed(2));
+    body.setAttribute("rx", "2");
+    body.setAttribute("class", `candle-body ${rising ? "up" : "down"}`);
+
+    stockCandlesLayer.appendChild(wick);
+    stockCandlesLayer.appendChild(body);
+    linePoints.push(`${x.toFixed(2)} ${closeY.toFixed(2)}`);
+  });
+
+  stockLinePath.setAttribute("d", `M ${linePoints.join(" L ")}`);
+  stockRangeEl.textContent = `${formatMoney(min)} - ${formatMoney(max)}`;
+  stockBarsEl.textContent = `${bars.length}개 1분봉`;
+}
+
 async function refreshStocks() {
   try {
     const response = await fetch(`/api/stocks?symbols=${stockSymbols.map((item) => item.quoteSymbol).join(",")}`, {
@@ -185,7 +298,16 @@ async function refreshStocks() {
 
     const data = await response.json();
     stockPollMs = data.usingAlpacaIex ? 2000 : 5000;
-    data.quotes.forEach((quote) => updatePrice(quote.symbol, Number(quote.price)));
+    stockFeedStatus.textContent = data.usingAlpacaIex ? "주식: Alpaca IEX 실시간" : "주식: 공개 피드 대체";
+
+    data.quotes.forEach((quote) => {
+      updatePrice(quote.symbol, Number(quote.price));
+      stockSnapshots.set(quote.symbol, quote);
+    });
+
+    drawStockChart(activeStockSymbol);
+  } catch (error) {
+    stockFeedStatus.textContent = "주식: 데이터 갱신 실패";
   } finally {
     window.clearTimeout(stockTimerId);
     stockTimerId = window.setTimeout(refreshStocks, stockPollMs);
@@ -266,7 +388,7 @@ function createAdvancedChart(hostId, symbol) {
   host.appendChild(wrapper);
 }
 
-function renderSymbolButtons(containerId, hostId, symbols) {
+function renderSymbolButtons(containerId, hostId, symbols, onSelect) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
 
@@ -286,13 +408,23 @@ function renderSymbolButtons(containerId, hostId, symbols) {
     button.addEventListener("click", () => {
       activeCode = item.code;
       updateActive();
-      createAdvancedChart(hostId, activeCode);
+      if (hostId) {
+        createAdvancedChart(hostId, activeCode);
+      }
+      if (onSelect) {
+        onSelect(item);
+      }
     });
     container.appendChild(fragment);
   });
 
   updateActive();
-  createAdvancedChart(hostId, activeCode);
+  if (hostId) {
+    createAdvancedChart(hostId, activeCode);
+  }
+  if (onSelect) {
+    onSelect(symbols[0]);
+  }
 }
 
 function populateAlertSymbols() {
@@ -335,6 +467,9 @@ bindAlertForm();
 renderActiveAlerts();
 renderPrices();
 renderSymbolButtons("cryptoButtons", "cryptoChart", cryptoSymbols);
-renderSymbolButtons("stockButtons", "stockChart", stockSymbols);
+renderSymbolButtons("stockButtons", null, stockSymbols, (item) => {
+  activeStockSymbol = item.quoteSymbol;
+  drawStockChart(activeStockSymbol);
+});
 connectCryptoFeed();
 refreshStocks();

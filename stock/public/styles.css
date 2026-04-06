@@ -151,6 +151,111 @@ h1 {
   gap: 1rem;
 }
 
+.stock-stage {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.stock-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.05rem;
+  border-radius: 18px;
+  border: 1px solid rgba(149, 209, 230, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.summary-symbol,
+.summary-name,
+.summary-price,
+.summary-meta,
+.chart-stat {
+  margin: 0;
+}
+
+.summary-symbol {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.summary-name {
+  margin-top: 0.12rem;
+  font-size: 1.2rem;
+}
+
+.summary-price-block {
+  text-align: right;
+}
+
+.summary-price {
+  font: 700 clamp(1.5rem, 3vw, 2.4rem) / 1 "Space Grotesk", sans-serif;
+}
+
+.summary-meta {
+  margin-top: 0.28rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.custom-chart-frame {
+  min-height: 360px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(149, 209, 230, 0.1);
+  background:
+    radial-gradient(circle at top, rgba(66, 212, 197, 0.08), transparent 35%),
+    rgba(255, 255, 255, 0.02);
+}
+
+#stockChartSvg {
+  width: 100%;
+  height: 360px;
+  display: block;
+}
+
+.chart-grid {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.chart-price-line {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.candle-wick {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.candle-body.up,
+.candle-wick.up {
+  fill: rgba(77, 226, 168, 0.95);
+  stroke: rgba(77, 226, 168, 0.95);
+}
+
+.candle-body.down,
+.candle-wick.down {
+  fill: rgba(255, 127, 115, 0.95);
+  stroke: rgba(255, 127, 115, 0.95);
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .symbol-bar {
   display: flex;
   gap: 0.65rem;
@@ -341,6 +446,16 @@ iframe {
   .alert-form,
   .alert-columns {
     grid-template-columns: 1fr;
+  }
+
+  .stock-summary,
+  .chart-footer {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .summary-price-block {
+    text-align: left;
   }
 
   .tv-frame,

@@ -19,14 +19,14 @@
     <main class="page">
       <section class="hero">
         <p class="eyebrow">24H Market Pulse</p>
-        <h1>코인과 주식을 큰 1분봉 차트로 보고 직접 알림 받기</h1>
+        <h1>코인은 TradingView, 주식은 IEX 기반 직접 차트</h1>
         <p class="hero-copy">
-          차트는 TradingView로 보고, 알림은 이 사이트에서 직접 설정합니다. 목표 가격을
-          넘거나 내려갈 때 브라우저 알림을 보낼 수 있습니다.
+          코인은 큰 TradingView 1분봉 차트로 보고, 미국 주식은 Alpaca IEX 데이터로 직접
+          그린 캔들 차트를 사용합니다. 알림은 이 사이트에서 직접 설정할 수 있습니다.
         </p>
         <div class="status-bar">
-          <span class="pill">코인: 1분봉 기본</span>
-          <span class="pill">주식: 1분봉 기본</span>
+          <span class="pill">코인: TradingView 1분봉</span>
+          <span id="stockFeedStatus" class="pill">주식: 데이터 확인 중</span>
           <span id="alertPermission" class="pill">알림 권한: 확인 전</span>
         </div>
       </section>
@@ -38,7 +38,7 @@
               <p class="panel-kicker">Crypto</p>
               <h2>실시간 코인</h2>
             </div>
-            <p class="panel-note">Coinbase symbols</p>
+            <p class="panel-note">TradingView Advanced Chart</p>
           </div>
           <div id="cryptoButtons" class="symbol-bar"></div>
           <div class="tv-frame">
@@ -52,11 +52,31 @@
               <p class="panel-kicker">Stocks</p>
               <h2>미국 주식</h2>
             </div>
-            <p class="panel-note">NASDAQ symbols</p>
+            <p class="panel-note">Alpaca IEX custom candles</p>
           </div>
           <div id="stockButtons" class="symbol-bar"></div>
-          <div class="tv-frame">
-            <div id="stockChart" class="tv-host"></div>
+          <div class="stock-stage">
+            <div class="stock-summary">
+              <div>
+                <p id="stockSymbol" class="summary-symbol"></p>
+                <h3 id="stockName" class="summary-name"></h3>
+              </div>
+              <div class="summary-price-block">
+                <p id="stockPrice" class="summary-price"></p>
+                <p id="stockMeta" class="summary-meta"></p>
+              </div>
+            </div>
+            <div class="custom-chart-frame">
+              <svg id="stockChartSvg" viewBox="0 0 900 360" preserveAspectRatio="none" aria-hidden="true">
+                <path id="stockGrid" class="chart-grid"></path>
+                <g id="stockCandles"></g>
+                <path id="stockLine" class="chart-price-line"></path>
+              </svg>
+            </div>
+            <div class="chart-footer">
+              <span id="stockRange" class="chart-stat"></span>
+              <span id="stockBars" class="chart-stat"></span>
+            </div>
           </div>
         </article>
 

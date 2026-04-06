@@ -7,37 +7,76 @@ const STOCK_NAMES = {
   META: "Meta",
 };
 
-const ALPACA_BASE_URL = "https://data.alpaca.markets/v2/stocks/snapshots";
+const ALPACA_SNAPSHOTS_URL = "https://data.alpaca.markets/v2/stocks/snapshots";
+const ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars";
+const MAX_BARS = 15;
 
 function numberOrNull(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 }
 
+function buildHeaders(env) {
+  return {
+    "APCA-API-KEY-ID": env.APCA_API_KEY_ID,
+    "APCA-API-SECRET-KEY": env.APCA_API_SECRET_KEY,
+    Accept: "application/json",
+  };
+}
+
 async function fetchAlpacaSnapshots(symbols, env) {
-  const url = new URL(ALPACA_BASE_URL);
+  const url = new URL(ALPACA_SNAPSHOTS_URL);
   url.searchParams.set("symbols", symbols.join(","));
   url.searchParams.set("feed", "iex");
 
   const response = await fetch(url.toString(), {
-    headers: {
-      "APCA-API-KEY-ID": env.APCA_API_KEY_ID,
-      "APCA-API-SECRET-KEY": env.APCA_API_SECRET_KEY,
-      Accept: "application/json",
-    },
+    headers: buildHeaders(env),
   });
 
   if (!response.ok) {
     throw new Error(`Alpaca snapshot error ${response.status}`);
   }
 
-  const payload = await response.json();
+  return response.json();
+}
+
+async function fetchAlpacaBars(symbols, env) {
+  const url = new URL(ALPACA_BARS_URL);
+  const end = new Date();
+  const start = new Date(end.getTime() - 1000 * 60 * 20);
+
+  url.searchParams.set("symbols", symbols.join(","));
+  url.searchParams.set("timeframe", "1Min");
+  url.searchParams.set("feed", "iex");
+  url.searchParams.set("start", start.toISOString());
+  url.searchParams.set("end", end.toISOString());
+  url.searchParams.set("limit", String(MAX_BARS));
+  url.searchParams.set("sort", "asc");
+
+  const response = await fetch(url.toString(), {
+    headers: buildHeaders(env),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Alpaca bars error ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function fetchAlpacaQuotes(symbols, env) {
+  const [snapshotsPayload, barsPayload] = await Promise.all([
+    fetchAlpacaSnapshots(symbols, env),
+    fetchAlpacaBars(symbols, env),
+  ]);
+
   return symbols.map((symbol) => {
-    const snapshot = payload[symbol];
+    const snapshot = snapshotsPayload[symbol];
     const trade = snapshot?.latestTrade || null;
     const minuteBar = snapshot?.minuteBar || null;
     const dailyBar = snapshot?.dailyBar || null;
     const prevDailyBar = snapshot?.prevDailyBar || null;
+    const symbolBars = Array.isArray(barsPayload.bars?.[symbol]) ? barsPayload.bars[symbol] : [];
 
     const price = numberOrNull(trade?.p) ?? numberOrNull(minuteBar?.c) ?? numberOrNull(dailyBar?.c);
     const previousClose = numberOrNull(prevDailyBar?.c);
@@ -53,8 +92,14 @@ async function fetchAlpacaSnapshots(symbols, env) {
       currency: "USD",
       marketState: "IEX REAL-TIME",
       source: "alpaca_iex",
-      tradeTimestamp: trade?.t || null,
-      minuteBar,
+      bars: symbolBars.map((bar) => ({
+        time: bar.t,
+        open: numberOrNull(bar.o),
+        high: numberOrNull(bar.h),
+        low: numberOrNull(bar.l),
+        close: numberOrNull(bar.c),
+        volume: numberOrNull(bar.v),
+      })),
     };
   });
 }
@@ -95,13 +140,14 @@ async function fetchStooqQuote(symbol) {
     currency: "USD",
     marketState: "PUBLIC FEED",
     source: "stooq",
+    bars: [],
   };
 }
 
 async function fetchQuotes(symbols, env) {
   if (env.APCA_API_KEY_ID && env.APCA_API_SECRET_KEY) {
     try {
-      return await fetchAlpacaSnapshots(symbols, env);
+      return await fetchAlpacaQuotes(symbols, env);
     } catch (error) {
       const fallback = await Promise.all(symbols.map(fetchStooqQuote));
       return fallback.map((item) => ({
