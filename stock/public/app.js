@@ -94,6 +94,7 @@ function renderSparkline(card, points, direction) {
   const line = card.querySelector(".sparkline-line");
   const area = card.querySelector(".sparkline-area");
   const label = card.querySelector(".chart-label");
+  const range = card.querySelector(".chart-range");
   const paths = buildSparkline(points);
 
   line.setAttribute("d", paths.line);
@@ -109,7 +110,14 @@ function renderSparkline(card, points, direction) {
     area.classList.add("down");
   }
 
-  label.textContent = points.length > 1 ? `${points.length} ticks tracked` : "Collecting data";
+  label.textContent = points.length > 1 ? `최근 ${points.length}틱` : "데이터 수집 중";
+  if (points.length) {
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    range.textContent = `${formatMoney(min)} - ${formatMoney(max)}`;
+  } else {
+    range.textContent = "";
+  }
 }
 
 function flashCard(card, direction) {
@@ -167,7 +175,7 @@ function connectCryptoFeed() {
       market: "CRYPTO",
       price: null,
       currency: "USD",
-      meta: "Waiting for live ticks",
+      meta: "실시간 틱 대기 중",
       direction: "flat",
     });
   });
@@ -175,7 +183,7 @@ function connectCryptoFeed() {
   const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
 
   ws.addEventListener("open", () => {
-    cryptoStatus.textContent = "Crypto: connected";
+    cryptoStatus.textContent = "코인: 연결됨";
     ws.send(
       JSON.stringify({
         type: "subscribe",
@@ -215,12 +223,12 @@ function connectCryptoFeed() {
   });
 
   ws.addEventListener("close", () => {
-    cryptoStatus.textContent = "Crypto: reconnecting";
+    cryptoStatus.textContent = "코인: 재연결 중";
     setTimeout(connectCryptoFeed, 3000);
   });
 
   ws.addEventListener("error", () => {
-    cryptoStatus.textContent = "Crypto: connection error";
+    cryptoStatus.textContent = "코인: 연결 오류";
   });
 }
 
@@ -236,7 +244,7 @@ async function refreshStocks() {
   }
 
   stockRefreshInFlight = true;
-  stockStatus.textContent = `Stocks: polling every ${stockPollMs / 1000}s`;
+  stockStatus.textContent = `주식: ${stockPollMs / 1000}초 주기 갱신`;
 
   try {
     const response = await fetch(`/api/stocks?symbols=${stockSymbols.join(",")}`, {
@@ -263,14 +271,14 @@ async function refreshStocks() {
         market: quote.marketState,
         price,
         currency: quote.currency || "USD",
-        meta: `Tick ${formatChange(delta, deltaPct)}`,
+        meta: `틱 변동 ${formatChange(delta, deltaPct)}`,
         direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
       });
     });
 
-    stockStatus.textContent = `Stocks: updated ${new Date().toLocaleTimeString("en-US")}`;
+    stockStatus.textContent = `주식: ${new Date().toLocaleTimeString("ko-KR")} 갱신`;
   } catch (error) {
-    stockStatus.textContent = "Stocks: refresh failed";
+    stockStatus.textContent = "주식: 갱신 실패";
   } finally {
     stockRefreshInFlight = false;
     scheduleStockRefresh(stockPollMs);

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -19,15 +19,15 @@
     <main class="page">
       <section class="hero">
         <p class="eyebrow">24H Market Pulse</p>
-        <h1>Track stocks and crypto with faster live reactions</h1>
+        <h1>주식과 코인을 더 빠르고 직관적으로 추적</h1>
         <p class="hero-copy">
-          Crypto uses a live Coinbase stream, while US stocks refresh on a short
-          loop with a mini trend chart for quicker visual feedback.
+          코인은 Coinbase 실시간 스트림으로 받고, 미국 주식은 짧은 주기로 반복 조회해
+          더 빠르게 반응하도록 구성했습니다.
         </p>
         <div class="status-bar">
-          <span id="cryptoStatus" class="pill">Crypto: connecting</span>
-          <span id="stockStatus" class="pill">Stocks: warming up</span>
-          <span class="pill">Sparkline: ON</span>
+          <span id="cryptoStatus" class="pill">코인: 연결 중</span>
+          <span id="stockStatus" class="pill">주식: 준비 중</span>
+          <span class="pill">미니 차트: 켜짐</span>
         </div>
       </section>
 
@@ -36,7 +36,7 @@
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Crypto</p>
-              <h2>Live Crypto</h2>
+              <h2>실시간 코인</h2>
             </div>
             <p class="panel-note">Coinbase WebSocket</p>
           </div>
@@ -47,9 +47,9 @@
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Stocks</p>
-              <h2>US Stocks</h2>
+              <h2>미국 주식</h2>
             </div>
-            <p class="panel-note">Fast repeat polling</p>
+            <p class="panel-note">고속 반복 조회</p>
           </div>
           <div id="stockGrid" class="ticker-grid"></div>
         </div>
@@ -71,7 +71,10 @@
             <path class="sparkline-area"></path>
             <path class="sparkline-line"></path>
           </svg>
-          <p class="chart-label">Recent trend</p>
+          <div class="chart-meta">
+            <p class="chart-label">최근 흐름</p>
+            <p class="chart-range"></p>
+          </div>
         </div>
         <p class="meta"></p>
       </article>
