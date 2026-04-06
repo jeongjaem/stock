@@ -1,63 +1,92 @@
 const cryptoSymbols = [
-  { code: "COINBASE:BTCUSD", symbol: "BTC-USD", name: "Bitcoin", market: "CRYPTO" },
-  { code: "COINBASE:ETHUSD", symbol: "ETH-USD", name: "Ethereum", market: "CRYPTO" },
-  { code: "COINBASE:SOLUSD", symbol: "SOL-USD", name: "Solana", market: "CRYPTO" },
-  { code: "COINBASE:XRPUSD", symbol: "XRP-USD", name: "XRP", market: "CRYPTO" },
+  { code: "COINBASE:BTCUSD", label: "BTC-USD" },
+  { code: "COINBASE:ETHUSD", label: "ETH-USD" },
+  { code: "COINBASE:SOLUSD", label: "SOL-USD" },
+  { code: "COINBASE:XRPUSD", label: "XRP-USD" },
 ];
 
 const stockSymbols = [
-  { code: "NASDAQ:AAPL", symbol: "AAPL", name: "Apple", market: "STOCK" },
-  { code: "NASDAQ:MSFT", symbol: "MSFT", name: "Microsoft", market: "STOCK" },
-  { code: "NASDAQ:NVDA", symbol: "NVDA", name: "NVIDIA", market: "STOCK" },
-  { code: "NASDAQ:TSLA", symbol: "TSLA", name: "Tesla", market: "STOCK" },
-  { code: "NASDAQ:AMZN", symbol: "AMZN", name: "Amazon", market: "STOCK" },
-  { code: "NASDAQ:META", symbol: "META", name: "Meta", market: "STOCK" },
+  { code: "NASDAQ:AAPL", label: "AAPL" },
+  { code: "NASDAQ:MSFT", label: "MSFT" },
+  { code: "NASDAQ:NVDA", label: "NVDA" },
+  { code: "NASDAQ:TSLA", label: "TSLA" },
+  { code: "NASDAQ:AMZN", label: "AMZN" },
+  { code: "NASDAQ:META", label: "META" },
 ];
 
-const cryptoGrid = document.getElementById("cryptoGrid");
-const stockGrid = document.getElementById("stockGrid");
-const cardTemplate = document.getElementById("widgetCardTemplate");
+const buttonTemplate = document.getElementById("symbolButtonTemplate");
 
-function createWidgetCard(container, item) {
-  const fragment = cardTemplate.content.cloneNode(true);
-  const card = fragment.querySelector(".widget-card");
-  card.querySelector(".symbol").textContent = item.symbol;
-  card.querySelector(".name").textContent = item.name;
-  card.querySelector(".market-tag").textContent = item.market;
+function createAdvancedChart(hostId, symbol) {
+  const host = document.getElementById(hostId);
+  host.innerHTML = "";
 
-  const host = fragment.querySelector(".widget-host");
-  const widgetRoot = document.createElement("div");
-  widgetRoot.className = "tradingview-widget-container__widget";
-  host.appendChild(widgetRoot);
+  const wrapper = document.createElement("div");
+  wrapper.className = "tradingview-widget-container";
+
+  const widget = document.createElement("div");
+  widget.className = "tradingview-widget-container__widget";
+  wrapper.appendChild(widget);
 
   const script = document.createElement("script");
-  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
   script.async = true;
   script.text = JSON.stringify({
-    symbol: item.code,
-    width: "100%",
-    height: 220,
-    locale: "kr",
-    dateRange: "1D",
-    colorTheme: "dark",
-    isTransparent: true,
     autosize: true,
-    largeChartUrl: "",
-    chartOnly: false,
-    noTimeScale: false,
-    trendLineColor: "rgba(66, 212, 197, 1)",
-    underLineColor: "rgba(66, 212, 197, 0.16)",
-    underLineBottomColor: "rgba(66, 212, 197, 0.02)",
-    lineWidth: 2,
+    symbol,
+    interval: "1",
+    range: "60m",
+    timezone: "Asia/Seoul",
+    theme: "dark",
+    style: "1",
+    locale: "kr",
+    allow_symbol_change: false,
+    hide_top_toolbar: true,
+    hide_side_toolbar: false,
+    hide_legend: false,
+    save_image: false,
+    calendar: false,
+    support_host: "https://www.tradingview.com",
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    gridColor: "rgba(255, 255, 255, 0.06)",
+    watchlist: [],
+    studies: [],
+    withdateranges: true,
+    details: false,
+    hotlist: false,
   });
-  host.appendChild(script);
 
-  container.appendChild(fragment);
+  wrapper.appendChild(script);
+  host.appendChild(wrapper);
 }
 
-function renderWidgets() {
-  cryptoSymbols.forEach((item) => createWidgetCard(cryptoGrid, item));
-  stockSymbols.forEach((item) => createWidgetCard(stockGrid, item));
+function renderSymbolButtons(containerId, hostId, symbols) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+
+  let activeCode = symbols[0].code;
+
+  const updateActive = () => {
+    Array.from(container.querySelectorAll(".symbol-chip")).forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.symbol === activeCode);
+    });
+  };
+
+  symbols.forEach((item) => {
+    const fragment = buttonTemplate.content.cloneNode(true);
+    const button = fragment.querySelector(".symbol-chip");
+    button.textContent = item.label;
+    button.dataset.symbol = item.code;
+    button.addEventListener("click", () => {
+      activeCode = item.code;
+      updateActive();
+      createAdvancedChart(hostId, activeCode);
+    });
+    container.appendChild(fragment);
+  });
+
+  updateActive();
+  createAdvancedChart(hostId, activeCode);
 }
 
-renderWidgets();
+renderSymbolButtons("cryptoButtons", "cryptoChart", cryptoSymbols);
+renderSymbolButtons("stockButtons", "stockChart", stockSymbols);

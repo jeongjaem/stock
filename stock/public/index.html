@@ -19,56 +19,51 @@
     <main class="page">
       <section class="hero">
         <p class="eyebrow">24H Market Pulse</p>
-        <h1>트레이딩뷰 위젯으로 코인과 주식을 한 화면에서 보기</h1>
+        <h1>코인과 주식을 큰 1분봉 차트로 바로 보기</h1>
         <p class="hero-copy">
-          차트는 TradingView 위젯으로 표시해 봉 마감과 분봉 갱신을 차트 엔진에 맡기고,
-          우리는 한 화면에서 빠르게 보는 데 집중합니다.
+          각 시장마다 큰 TradingView 차트 하나를 두고, 종목 버튼으로 바로 전환할 수 있게
+          구성했습니다. 코인과 미국 주식을 한 화면에서 빠르게 오갈 수 있습니다.
         </p>
         <div class="status-bar">
-          <span id="cryptoStatus" class="pill">코인: TradingView 위젯</span>
-          <span id="stockStatus" class="pill">주식: TradingView 위젯</span>
-          <span class="pill">기본 주기: 1분봉</span>
+          <span class="pill">코인: 1분봉 기본</span>
+          <span class="pill">주식: 1분봉 기본</span>
+          <span class="pill">TradingView Advanced Chart</span>
         </div>
       </section>
 
-      <section class="grid">
-        <div class="panel">
+      <section class="stack">
+        <article class="panel chart-panel">
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Crypto</p>
               <h2>실시간 코인</h2>
             </div>
-            <p class="panel-note">TradingView Mini Symbol Overview</p>
+            <p class="panel-note">Coinbase symbols</p>
           </div>
-          <div id="cryptoGrid" class="widget-grid"></div>
-        </div>
+          <div id="cryptoButtons" class="symbol-bar"></div>
+          <div class="tv-frame">
+            <div id="cryptoChart" class="tv-host"></div>
+          </div>
+        </article>
 
-        <div class="panel">
+        <article class="panel chart-panel">
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Stocks</p>
               <h2>미국 주식</h2>
             </div>
-            <p class="panel-note">TradingView Mini Symbol Overview</p>
+            <p class="panel-note">NASDAQ symbols</p>
           </div>
-          <div id="stockGrid" class="widget-grid"></div>
-        </div>
+          <div id="stockButtons" class="symbol-bar"></div>
+          <div class="tv-frame">
+            <div id="stockChart" class="tv-host"></div>
+          </div>
+        </article>
       </section>
     </main>
 
-    <template id="widgetCardTemplate">
-      <article class="widget-card">
-        <div class="widget-card-head">
-          <div>
-            <p class="symbol"></p>
-            <h3 class="name"></h3>
-          </div>
-          <span class="market-tag"></span>
-        </div>
-        <div class="tv-widget-shell">
-          <div class="tradingview-widget-container widget-host"></div>
-        </div>
-      </article>
+    <template id="symbolButtonTemplate">
+      <button type="button" class="symbol-chip"></button>
     </template>
 
     <script src="/app.js"></script>
