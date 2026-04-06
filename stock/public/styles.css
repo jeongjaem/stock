@@ -1,0 +1,246 @@
+:root {
+  --bg: #06131a;
+  --bg-soft: rgba(9, 28, 39, 0.78);
+  --panel: rgba(8, 22, 31, 0.86);
+  --border: rgba(154, 208, 228, 0.18);
+  --text: #e9fbff;
+  --muted: #93b6bf;
+  --accent: #42d4c5;
+  --accent-2: #ffb85c;
+  --up: #4de2a8;
+  --down: #ff7f73;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Noto Sans KR", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(66, 212, 197, 0.14), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255, 184, 92, 0.14), transparent 35%),
+    linear-gradient(160deg, #041017 0%, #081a23 45%, #031018 100%);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+.aurora {
+  position: fixed;
+  inset: auto;
+  border-radius: 999px;
+  filter: blur(90px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.aurora-one {
+  width: 20rem;
+  height: 20rem;
+  top: 5%;
+  right: 10%;
+  background: rgba(66, 212, 197, 0.22);
+  animation: float 12s ease-in-out infinite;
+}
+
+.aurora-two {
+  width: 28rem;
+  height: 28rem;
+  bottom: 10%;
+  left: -5%;
+  background: rgba(255, 184, 92, 0.14);
+  animation: float 14s ease-in-out infinite reverse;
+}
+
+.page {
+  width: min(1160px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 4rem 0 5rem;
+}
+
+.hero {
+  padding: 2rem 0 2.5rem;
+}
+
+.eyebrow,
+.panel-kicker,
+.panel-note,
+.meta,
+.market-tag,
+.pill {
+  letter-spacing: 0.04em;
+}
+
+.eyebrow,
+.panel-kicker {
+  text-transform: uppercase;
+  color: var(--accent);
+  font: 700 0.8rem/1 "Space Grotesk", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.price,
+.symbol {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+h1 {
+  margin: 0.35rem 0 0;
+  font-size: clamp(2.5rem, 5vw, 4.7rem);
+  line-height: 0.95;
+  max-width: 12ch;
+}
+
+.hero-copy {
+  max-width: 45rem;
+  margin: 1.1rem 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.status-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.4rem;
+}
+
+.pill {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(8, 26, 35, 0.76);
+  color: var(--text);
+  backdrop-filter: blur(16px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 1.2rem;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.panel-head,
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.panel-head h2,
+.name,
+.price,
+.symbol,
+.meta,
+.panel-note,
+.market-tag {
+  margin: 0;
+}
+
+.panel-note,
+.meta {
+  color: var(--muted);
+}
+
+.ticker-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.card {
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(13, 36, 49, 0.95), rgba(6, 21, 28, 0.95));
+  border: 1px solid rgba(149, 209, 230, 0.12);
+  padding: 1rem;
+  transform: translateY(12px);
+  opacity: 0;
+  animation: rise 0.5s ease forwards;
+}
+
+.symbol {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.name {
+  font-size: 1.05rem;
+  margin-top: 0.1rem;
+}
+
+.market-tag {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.price {
+  margin-top: 0.85rem;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 700;
+}
+
+.meta {
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.up {
+  color: var(--up);
+}
+
+.down {
+  color: var(--down);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(18px, -16px, 0) scale(1.08);
+  }
+}
+
+@keyframes rise {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 1rem, 1160px);
+    padding-top: 2rem;
+  }
+
+  .panel,
+  .card {
+    border-radius: 22px;
+  }
+}
