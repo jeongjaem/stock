@@ -19,15 +19,15 @@
     <main class="page">
       <section class="hero">
         <p class="eyebrow">24H Market Pulse</p>
-        <h1>코인과 주식을 큰 1분봉 차트로 바로 보기</h1>
+        <h1>코인과 주식을 큰 1분봉 차트로 보고 직접 알림 받기</h1>
         <p class="hero-copy">
-          각 시장마다 큰 TradingView 차트 하나를 두고, 종목 버튼으로 바로 전환할 수 있게
-          구성했습니다. 코인과 미국 주식을 한 화면에서 빠르게 오갈 수 있습니다.
+          차트는 TradingView로 보고, 알림은 이 사이트에서 직접 설정합니다. 목표 가격을
+          넘거나 내려갈 때 브라우저 알림을 보낼 수 있습니다.
         </p>
         <div class="status-bar">
           <span class="pill">코인: 1분봉 기본</span>
           <span class="pill">주식: 1분봉 기본</span>
-          <span class="pill">TradingView Advanced Chart</span>
+          <span id="alertPermission" class="pill">알림 권한: 확인 전</span>
         </div>
       </section>
 
@@ -59,11 +59,55 @@
             <div id="stockChart" class="tv-host"></div>
           </div>
         </article>
+
+        <article class="panel alert-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Alerts</p>
+              <h2>브라우저 알림</h2>
+            </div>
+            <button id="permissionButton" type="button" class="action-button">권한 요청</button>
+          </div>
+
+          <form id="alertForm" class="alert-form">
+            <label class="field">
+              <span>심볼</span>
+              <select id="alertSymbol"></select>
+            </label>
+            <label class="field">
+              <span>조건</span>
+              <select id="alertDirection">
+                <option value="above">이 가격 이상</option>
+                <option value="below">이 가격 이하</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>가격</span>
+              <input id="alertPrice" type="number" step="0.0001" min="0" placeholder="예: 90000" required />
+            </label>
+            <button type="submit" class="action-button primary">알림 추가</button>
+          </form>
+
+          <div class="alert-columns">
+            <section>
+              <p class="list-title">활성 알림</p>
+              <div id="alertList" class="alert-list"></div>
+            </section>
+            <section>
+              <p class="list-title">현재 가격</p>
+              <div id="priceList" class="alert-list"></div>
+            </section>
+          </div>
+        </article>
       </section>
     </main>
 
     <template id="symbolButtonTemplate">
       <button type="button" class="symbol-chip"></button>
+    </template>
+
+    <template id="listItemTemplate">
+      <article class="list-item"></article>
     </template>
 
     <script src="/app.js"></script>
