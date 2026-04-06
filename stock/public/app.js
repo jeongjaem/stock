@@ -21,6 +21,7 @@ let stockRefreshInFlight = false;
 let stockTimerId = null;
 let cryptoCandleTimerId = null;
 const cryptoCandlesBySymbol = new Map();
+const liveCryptoStateBySymbol = new Map();
 
 function text(value) {
   return value;
@@ -51,6 +52,55 @@ function formatChange(change, changePercent) {
     ? ""
     : ` (${sign}${Number(changePercent).toFixed(2)}%)`;
   return `${sign}${Number(change).toFixed(2)}${pct}`;
+}
+
+function getCandleStart(timeMs, granularitySeconds) {
+  const bucketMs = granularitySeconds * 1000;
+  return Math.floor(timeMs / bucketMs) * bucketMs;
+}
+
+function mergeLiveTickIntoCandles(symbol, price, timeMs, granularitySeconds) {
+  if (!Number.isFinite(price)) {
+    return cryptoCandlesBySymbol.get(symbol) || [];
+  }
+
+  const baseCandles = (cryptoCandlesBySymbol.get(symbol) || []).map((candle) => ({ ...candle }));
+  const candleStartMs = getCandleStart(timeMs, granularitySeconds);
+  const candleStartSeconds = Math.floor(candleStartMs / 1000);
+  const lastBase = baseCandles[baseCandles.length - 1];
+
+  if (!lastBase || lastBase.time < candleStartSeconds) {
+    const open = lastBase ? lastBase.close : price;
+    baseCandles.push({
+      time: candleStartSeconds,
+      open,
+      high: Math.max(open, price),
+      low: Math.min(open, price),
+      close: price,
+      volume: null,
+    });
+  }
+
+  const liveIndex = baseCandles.findIndex((candle) => candle.time === candleStartSeconds);
+  if (liveIndex >= 0) {
+    const candle = baseCandles[liveIndex];
+    const state = liveCryptoStateBySymbol.get(symbol);
+    const open = state && state.bucketStartMs === candleStartMs
+      ? state.open
+      : candle.open ?? candle.close ?? price;
+
+    candle.open = open;
+    candle.high = Math.max(candle.high ?? price, price, open);
+    candle.low = Math.min(candle.low ?? price, price, open);
+    candle.close = price;
+
+    liveCryptoStateBySymbol.set(symbol, {
+      bucketStartMs: candleStartMs,
+      open,
+    });
+  }
+
+  return baseCandles.slice(-maxHistoryPoints);
 }
 
 function pushHistoryPoint(key, value) {
@@ -262,6 +312,14 @@ async function refreshCryptoCandles() {
     const data = await response.json();
     data.products.forEach((item) => {
       cryptoCandlesBySymbol.set(item.productId, item.candles || []);
+      const candles = item.candles || [];
+      const latest = candles[candles.length - 1];
+      if (latest) {
+        liveCryptoStateBySymbol.set(item.productId, {
+          bucketStartMs: latest.time * 1000,
+          open: latest.open,
+        });
+      }
     });
 
     cryptoStatus.textContent = `\uCF54\uC778: 1\uBD84\uBD09 ${new Date().toLocaleTimeString("ko-KR")} \uAC31\uC2E0`;
@@ -313,12 +371,13 @@ function connectCryptoFeed() {
     }
 
     const price = Number(payload.price);
+    const tickTimeMs = payload.time ? Date.parse(payload.time) : Date.now();
     const open24h = Number(payload.open_24h);
     const change = Number.isFinite(open24h) ? price - open24h : null;
     const changePercent = Number.isFinite(open24h) && open24h !== 0
       ? (change / open24h) * 100
       : null;
-    const candles = cryptoCandlesBySymbol.get(product.symbol) || [];
+    const candles = mergeLiveTickIntoCandles(product.symbol, price, tickTimeMs, cryptoGranularity);
 
     upsertCard(cryptoGrid, product.symbol, {
       symbol: product.symbol,
