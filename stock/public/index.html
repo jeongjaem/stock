@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -19,15 +19,15 @@
     <main class="page">
       <section class="hero">
         <p class="eyebrow">24H Market Pulse</p>
-        <h1>주식과 코인 가격을 한 화면에서 실시간 추적</h1>
+        <h1>Track stocks and crypto with faster live reactions</h1>
         <p class="hero-copy">
-          코인은 Coinbase 실시간 스트림으로 받고, 미국 주식은 서버가 공개 피드를
-          주기적으로 조회해 한곳에서 보여줍니다.
+          Crypto uses a live Coinbase stream, while US stocks refresh on a short
+          loop with a mini trend chart for quicker visual feedback.
         </p>
         <div class="status-bar">
-          <span id="cryptoStatus" class="pill">Crypto: 연결 중</span>
-          <span id="stockStatus" class="pill">Stocks: 대기 중</span>
-          <span class="pill">기본 포트: 8000</span>
+          <span id="cryptoStatus" class="pill">Crypto: connecting</span>
+          <span id="stockStatus" class="pill">Stocks: warming up</span>
+          <span class="pill">Sparkline: ON</span>
         </div>
       </section>
 
@@ -36,7 +36,7 @@
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Crypto</p>
-              <h2>실시간 코인</h2>
+              <h2>Live Crypto</h2>
             </div>
             <p class="panel-note">Coinbase WebSocket</p>
           </div>
@@ -47,9 +47,9 @@
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Stocks</p>
-              <h2>미국 주식</h2>
+              <h2>US Stocks</h2>
             </div>
-            <p class="panel-note">서버 5초 간격</p>
+            <p class="panel-note">Fast repeat polling</p>
           </div>
           <div id="stockGrid" class="ticker-grid"></div>
         </div>
@@ -66,6 +66,13 @@
           <span class="market-tag"></span>
         </div>
         <p class="price"></p>
+        <div class="chart-wrap">
+          <svg class="sparkline" viewBox="0 0 160 48" preserveAspectRatio="none" aria-hidden="true">
+            <path class="sparkline-area"></path>
+            <path class="sparkline-line"></path>
+          </svg>
+          <p class="chart-label">Recent trend</p>
+        </div>
         <p class="meta"></p>
       </article>
     </template>

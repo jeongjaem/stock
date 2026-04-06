@@ -6,11 +6,17 @@ const cryptoProducts = [
 ];
 
 const stockSymbols = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"];
+const stockPollMs = 2000;
+const maxHistoryPoints = 24;
+const historyBySymbol = new Map();
 const cryptoGrid = document.getElementById("cryptoGrid");
 const stockGrid = document.getElementById("stockGrid");
 const cryptoStatus = document.getElementById("cryptoStatus");
 const stockStatus = document.getElementById("stockStatus");
 const cardTemplate = document.getElementById("cardTemplate");
+
+let stockRefreshInFlight = false;
+let stockTimerId = null;
 
 function formatMoney(value, currency = "USD") {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -28,31 +34,112 @@ function formatMoney(value, currency = "USD") {
 }
 
 function formatChange(change, changePercent) {
-  if (change === null || change === undefined) {
+  if (change === null || change === undefined || Number.isNaN(Number(change))) {
     return "Change data unavailable";
   }
 
   const sign = Number(change) > 0 ? "+" : "";
-  const pct = changePercent === null || changePercent === undefined
+  const pct = changePercent === null || changePercent === undefined || Number.isNaN(Number(changePercent))
     ? ""
     : ` (${sign}${Number(changePercent).toFixed(2)}%)`;
   return `${sign}${Number(change).toFixed(2)}${pct}`;
+}
+
+function pushHistoryPoint(key, value) {
+  if (!Number.isFinite(value)) {
+    return historyBySymbol.get(key) || [];
+  }
+
+  const points = historyBySymbol.get(key) || [];
+  points.push(value);
+
+  while (points.length > maxHistoryPoints) {
+    points.shift();
+  }
+
+  historyBySymbol.set(key, points);
+  return points;
+}
+
+function buildSparkline(points) {
+  if (!points.length) {
+    return { line: "", area: "" };
+  }
+
+  if (points.length === 1) {
+    const y = 24;
+    return {
+      line: `M 0 ${y} L 160 ${y}`,
+      area: `M 0 48 L 0 ${y} L 160 ${y} L 160 48 Z`,
+    };
+  }
+
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || Math.max(Math.abs(max), 1);
+
+  const coords = points.map((point, index) => {
+    const x = (index / (points.length - 1)) * 160;
+    const normalized = range === 0 ? 0.5 : (point - min) / range;
+    const y = 42 - normalized * 34;
+    return `${x.toFixed(2)} ${y.toFixed(2)}`;
+  });
+
+  const line = `M ${coords.join(" L ")}`;
+  const area = `${line} L 160 48 L 0 48 Z`;
+  return { line, area };
+}
+
+function renderSparkline(card, points, direction) {
+  const line = card.querySelector(".sparkline-line");
+  const area = card.querySelector(".sparkline-area");
+  const label = card.querySelector(".chart-label");
+  const paths = buildSparkline(points);
+
+  line.setAttribute("d", paths.line);
+  area.setAttribute("d", paths.area);
+  line.classList.remove("up", "down");
+  area.classList.remove("up", "down");
+
+  if (direction === "up") {
+    line.classList.add("up");
+    area.classList.add("up");
+  } else if (direction === "down") {
+    line.classList.add("down");
+    area.classList.add("down");
+  }
+
+  label.textContent = points.length > 1 ? `${points.length} ticks tracked` : "Collecting data";
+}
+
+function flashCard(card, direction) {
+  card.classList.remove("flash-up", "flash-down");
+
+  if (direction === "up") {
+    card.classList.add("flash-up");
+  } else if (direction === "down") {
+    card.classList.add("flash-down");
+  }
 }
 
 function upsertCard(container, key, payload) {
   let card = container.querySelector(`[data-key="${key}"]`);
   if (!card) {
     const fragment = cardTemplate.content.cloneNode(true);
-    card = fragment.querySelector(".card");
-    card.dataset.key = key;
+    const nextCard = fragment.querySelector(".card");
+    nextCard.dataset.key = key;
     container.appendChild(fragment);
     card = container.querySelector(`[data-key="${key}"]`);
   }
 
+  const priceEl = card.querySelector(".price");
+  const previousText = priceEl.textContent;
+  const nextText = formatMoney(payload.price, payload.currency);
+
   card.querySelector(".symbol").textContent = payload.symbol;
   card.querySelector(".name").textContent = payload.name;
   card.querySelector(".market-tag").textContent = payload.market;
-  card.querySelector(".price").textContent = formatMoney(payload.price, payload.currency);
+  priceEl.textContent = nextText;
 
   const meta = card.querySelector(".meta");
   meta.textContent = payload.meta;
@@ -62,6 +149,13 @@ function upsertCard(container, key, payload) {
     meta.classList.add("up");
   } else if (payload.direction === "down") {
     meta.classList.add("down");
+  }
+
+  const points = pushHistoryPoint(key, Number(payload.price));
+  renderSparkline(card, points, payload.direction);
+
+  if (previousText && previousText !== nextText) {
+    flashCard(card, payload.direction);
   }
 }
 
@@ -81,7 +175,7 @@ function connectCryptoFeed() {
   const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
 
   ws.addEventListener("open", () => {
-    cryptoStatus.textContent = "Crypto: Connected";
+    cryptoStatus.textContent = "Crypto: connected";
     ws.send(
       JSON.stringify({
         type: "subscribe",
@@ -121,18 +215,30 @@ function connectCryptoFeed() {
   });
 
   ws.addEventListener("close", () => {
-    cryptoStatus.textContent = "Crypto: Reconnecting";
+    cryptoStatus.textContent = "Crypto: reconnecting";
     setTimeout(connectCryptoFeed, 3000);
   });
 
   ws.addEventListener("error", () => {
-    cryptoStatus.textContent = "Crypto: Connection error";
+    cryptoStatus.textContent = "Crypto: connection error";
   });
 }
 
+function scheduleStockRefresh(delay = stockPollMs) {
+  window.clearTimeout(stockTimerId);
+  stockTimerId = window.setTimeout(refreshStocks, delay);
+}
+
 async function refreshStocks() {
+  if (stockRefreshInFlight) {
+    scheduleStockRefresh(stockPollMs);
+    return;
+  }
+
+  stockRefreshInFlight = true;
+  stockStatus.textContent = `Stocks: polling every ${stockPollMs / 1000}s`;
+
   try {
-    stockStatus.textContent = "Stocks: Refreshing";
     const response = await fetch(`/api/stocks?symbols=${stockSymbols.join(",")}`, {
       cache: "no-store",
     });
@@ -143,23 +249,33 @@ async function refreshStocks() {
 
     const data = await response.json();
     data.quotes.forEach((quote) => {
+      const price = Number(quote.price);
+      const points = historyBySymbol.get(quote.symbol) || [];
+      const prevPrice = points.length ? points[points.length - 1] : null;
+      const delta = Number.isFinite(prevPrice) && Number.isFinite(price) ? price - prevPrice : quote.change;
+      const deltaPct = Number.isFinite(prevPrice) && prevPrice !== 0 && Number.isFinite(price)
+        ? (delta / prevPrice) * 100
+        : quote.changePercent;
+
       upsertCard(stockGrid, quote.symbol, {
         symbol: quote.symbol,
         name: quote.name,
         market: quote.marketState,
-        price: quote.price,
+        price,
         currency: quote.currency || "USD",
-        meta: formatChange(quote.change, quote.changePercent),
-        direction: quote.change > 0 ? "up" : quote.change < 0 ? "down" : "flat",
+        meta: `Tick ${formatChange(delta, deltaPct)}`,
+        direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
       });
     });
 
-    stockStatus.textContent = `Stocks: Updated ${new Date().toLocaleTimeString("ko-KR")}`;
+    stockStatus.textContent = `Stocks: updated ${new Date().toLocaleTimeString("en-US")}`;
   } catch (error) {
-    stockStatus.textContent = "Stocks: Refresh failed";
+    stockStatus.textContent = "Stocks: refresh failed";
+  } finally {
+    stockRefreshInFlight = false;
+    scheduleStockRefresh(stockPollMs);
   }
 }
 
 connectCryptoFeed();
 refreshStocks();
-setInterval(refreshStocks, 5000);
