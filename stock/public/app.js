@@ -6,8 +6,9 @@ const cryptoProducts = [
 ];
 
 const stockSymbols = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"];
-const stockPollMs = 4000;
-const stockInterval = "1min";
+const cryptoGranularity = 60;
+const stockPollMs = 5000;
+const cryptoCandlePollMs = 15000;
 const maxHistoryPoints = 24;
 const historyBySymbol = new Map();
 const cryptoGrid = document.getElementById("cryptoGrid");
@@ -18,6 +19,12 @@ const cardTemplate = document.getElementById("cardTemplate");
 
 let stockRefreshInFlight = false;
 let stockTimerId = null;
+let cryptoCandleTimerId = null;
+const cryptoCandlesBySymbol = new Map();
+
+function text(value) {
+  return value;
+}
 
 function formatMoney(value, currency = "USD") {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -120,14 +127,12 @@ function renderFallbackSparkline(card, points, direction) {
   }
 
   label.textContent = points.length > 1 ? `\uCD5C\uADFC ${points.length}\uD2F1` : "\uB370\uC774\uD130 \uC218\uC9D1 \uC911";
-  if (points.length) {
-    range.textContent = `${formatMoney(Math.min(...points))} - ${formatMoney(Math.max(...points))}`;
-  } else {
-    range.textContent = "";
-  }
+  range.textContent = points.length
+    ? `${formatMoney(Math.min(...points))} - ${formatMoney(Math.max(...points))}`
+    : "";
 }
 
-function renderCandles(card, candles) {
+function renderCandles(card, candles, granularitySeconds) {
   const line = card.querySelector(".sparkline-line");
   const area = card.querySelector(".sparkline-area");
   const layer = card.querySelector(".candle-layer");
@@ -188,7 +193,7 @@ function renderCandles(card, candles) {
     layer.appendChild(body);
   });
 
-  label.textContent = `${candles.length}\uAC1C 1\uBD84\uBD09`;
+  label.textContent = `${candles.length}\uAC1C ${Math.round(granularitySeconds / 60)}\uBD84\uBD09`;
   range.textContent = `${formatMoney(min)} - ${formatMoney(max)}`;
 }
 
@@ -232,7 +237,7 @@ function upsertCard(container, key, payload) {
   }
 
   if (payload.candles && payload.candles.length) {
-    renderCandles(card, payload.candles);
+    renderCandles(card, payload.candles, payload.granularity || cryptoGranularity);
   } else {
     const points = pushHistoryPoint(key, Number(payload.price));
     renderFallbackSparkline(card, points, payload.direction);
@@ -240,6 +245,31 @@ function upsertCard(container, key, payload) {
 
   if (previousText && previousText !== nextText) {
     flashCard(card, payload.direction);
+  }
+}
+
+async function refreshCryptoCandles() {
+  try {
+    const products = cryptoProducts.map((item) => item.symbol).join(",");
+    const response = await fetch(`/api/crypto?products=${products}&granularity=${cryptoGranularity}`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    data.products.forEach((item) => {
+      cryptoCandlesBySymbol.set(item.productId, item.candles || []);
+    });
+
+    cryptoStatus.textContent = `\uCF54\uC778: 1\uBD84\uBD09 ${new Date().toLocaleTimeString("ko-KR")} \uAC31\uC2E0`;
+  } catch (error) {
+    cryptoStatus.textContent = "\uCF54\uC778: \uBD84\uBD09 \uAC31\uC2E0 \uC2E4\uD328";
+  } finally {
+    window.clearTimeout(cryptoCandleTimerId);
+    cryptoCandleTimerId = window.setTimeout(refreshCryptoCandles, cryptoCandlePollMs);
   }
 }
 
@@ -254,13 +284,14 @@ function connectCryptoFeed() {
       meta: "\uC2E4\uC2DC\uAC04 \uD2F1 \uB300\uAE30 \uC911",
       direction: "flat",
       candles: [],
+      granularity: cryptoGranularity,
     });
   });
 
   const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
 
   ws.addEventListener("open", () => {
-    cryptoStatus.textContent = "\uCF54\uC778: \uC5F0\uACB0\uB428";
+    cryptoStatus.textContent = "\uCF54\uC778: \uC2E4\uC2DC\uAC04 \uC5F0\uACB0\uB428";
     ws.send(
       JSON.stringify({
         type: "subscribe",
@@ -287,6 +318,7 @@ function connectCryptoFeed() {
     const changePercent = Number.isFinite(open24h) && open24h !== 0
       ? (change / open24h) * 100
       : null;
+    const candles = cryptoCandlesBySymbol.get(product.symbol) || [];
 
     upsertCard(cryptoGrid, product.symbol, {
       symbol: product.symbol,
@@ -296,7 +328,8 @@ function connectCryptoFeed() {
       currency: "USD",
       meta: `24h ${formatChange(change, changePercent)}`,
       direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
-      candles: [],
+      candles,
+      granularity: cryptoGranularity,
     });
   });
 
@@ -322,10 +355,10 @@ async function refreshStocks() {
   }
 
   stockRefreshInFlight = true;
-  stockStatus.textContent = `\uC8FC\uC2DD: ${stockInterval} \uBD84\uBD09 \uC870\uD68C \uC911`;
+  stockStatus.textContent = `\uC8FC\uC2DD: ${stockPollMs / 1000}\uCD08 \uC8FC\uAE30 \uAC31\uC2E0`;
 
   try {
-    const response = await fetch(`/api/stocks?symbols=${stockSymbols.join(",")}&interval=${stockInterval}`, {
+    const response = await fetch(`/api/stocks?symbols=${stockSymbols.join(",")}`, {
       cache: "no-store",
     });
 
@@ -335,33 +368,19 @@ async function refreshStocks() {
 
     const data = await response.json();
     data.quotes.forEach((quote) => {
-      const price = Number(quote.price);
-      const candles = Array.isArray(quote.candles) ? quote.candles : [];
-      const prevCandle = candles.length > 1 ? candles[candles.length - 2] : null;
-      const delta = prevCandle && Number.isFinite(prevCandle.close) && Number.isFinite(price)
-        ? price - prevCandle.close
-        : quote.change;
-      const deltaPct = prevCandle && prevCandle.close && Number.isFinite(price)
-        ? (delta / prevCandle.close) * 100
-        : quote.changePercent;
-
       upsertCard(stockGrid, quote.symbol, {
         symbol: quote.symbol,
         name: quote.name,
         market: quote.marketState,
-        price,
+        price: Number(quote.price),
         currency: quote.currency || "USD",
-        meta: candles.length
-          ? `\uBD84\uBD09 ${formatChange(delta, deltaPct)}`
-          : `\uD2F1 \uBCC0\uB3D9 ${formatChange(delta, deltaPct)}`,
-        direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
-        candles,
+        meta: formatChange(quote.change, quote.changePercent),
+        direction: quote.change > 0 ? "up" : quote.change < 0 ? "down" : "flat",
+        candles: [],
       });
     });
 
-    stockStatus.textContent = data.usingIntraday
-      ? `\uC8FC\uC2DD: 1\uBD84\uBD09 ${new Date().toLocaleTimeString("ko-KR")} \uAC31\uC2E0`
-      : "\uC8FC\uC2DD: \uBD84\uBD09 \uD0A4 \uC5C6\uC74C, \uAE30\uBCF8 \uC2DC\uC138 \uC0AC\uC6A9 \uC911";
+    stockStatus.textContent = `\uC8FC\uC2DD: ${new Date().toLocaleTimeString("ko-KR")} \uAC31\uC2E0`;
   } catch (error) {
     stockStatus.textContent = "\uC8FC\uC2DD: \uAC31\uC2E0 \uC2E4\uD328";
   } finally {
@@ -371,4 +390,5 @@ async function refreshStocks() {
 }
 
 connectCryptoFeed();
+refreshCryptoCandles();
 refreshStocks();
