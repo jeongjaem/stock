@@ -30,6 +30,7 @@ const latestPrices = new Map();
 const activeAlerts = [];
 let stockTimerId = null;
 let cryptoSocket = null;
+let stockPollMs = 5000;
 
 function formatMoney(value) {
   if (!Number.isFinite(Number(value))) {
@@ -183,10 +184,11 @@ async function refreshStocks() {
     }
 
     const data = await response.json();
+    stockPollMs = data.usingAlpacaIex ? 2000 : 5000;
     data.quotes.forEach((quote) => updatePrice(quote.symbol, Number(quote.price)));
   } finally {
     window.clearTimeout(stockTimerId);
-    stockTimerId = window.setTimeout(refreshStocks, 5000);
+    stockTimerId = window.setTimeout(refreshStocks, stockPollMs);
   }
 }
 
