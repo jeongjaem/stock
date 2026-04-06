@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PulseBoard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="aurora aurora-one"></div>
+    <div class="aurora aurora-two"></div>
+
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">24H Market Pulse</p>
+        <h1>&#51452;&#49885;&#44284; &#53076;&#51064;&#51012; &#45908; &#48736;&#47476;&#44256; &#51649;&#44288;&#51201;&#51004;&#47196; &#52628;&#51201;</h1>
+        <p class="hero-copy">
+          &#53076;&#51064;&#51008; Coinbase &#49892;&#49884;&#44036; &#49828;&#53944;&#47548;&#51004;&#47196; &#48155;&#44256;, &#48120;&#44397; &#51452;&#49885;&#51008;
+          &#51639;&#51008; &#51452;&#44592;&#47196; &#48152;&#48373; &#51312;&#54924;&#54644; &#45908; &#48736;&#47476;&#44172; &#48152;&#51025;&#54616;&#46020;&#47197; &#44396;&#49457;&#54664;&#49845;&#45768;&#45796;.
+        </p>
+        <div class="status-bar">
+          <span id="cryptoStatus" class="pill">&#53076;&#51064;: &#50672;&#44208; &#51473;</span>
+          <span id="stockStatus" class="pill">&#51452;&#49885;: &#51456;&#48708; &#51473;</span>
+          <span class="pill">&#48120;&#45768; &#52264;&#53944;: &#53020;&#51656;</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Crypto</p>
+              <h2>&#49892;&#49884;&#44036; &#53076;&#51064;</h2>
+            </div>
+            <p class="panel-note">Coinbase WebSocket</p>
+          </div>
+          <div id="cryptoGrid" class="ticker-grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Stocks</p>
+              <h2>&#48120;&#44397; &#51452;&#49885;</h2>
+            </div>
+            <p class="panel-note">&#44256;&#49549; &#48152;&#48373; &#51312;&#54924;</p>
+          </div>
+          <div id="stockGrid" class="ticker-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <p class="symbol"></p>
+            <h3 class="name"></h3>
+          </div>
+          <span class="market-tag"></span>
+        </div>
+        <p class="price"></p>
+        <div class="chart-wrap">
+          <svg class="sparkline" viewBox="0 0 160 48" preserveAspectRatio="none" aria-hidden="true">
+            <path class="sparkline-grid"></path>
+            <path class="sparkline-area"></path>
+            <path class="sparkline-line"></path>
+            <g class="candle-layer"></g>
+          </svg>
+          <div class="chart-meta">
+            <p class="chart-label">&#52572;&#44540; &#55137;&#47492;</p>
+            <p class="chart-range"></p>
+          </div>
+        </div>
+        <p class="meta"></p>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
